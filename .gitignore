@@ -1,0 +1,65 @@
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+*.egg
+*.egg-info/
+.eggs/
+dist/
+build/
+.Python
+
+# 虚拟环境
+venv/
+env/
+.venv/
+.env
+
+# 运行产物
+results/
+trajectories/
+*.log
+dedup.log
+
+# 保留测试数据文件
+!data_checklist.jsonl
+
+# 排除私有测试文件
+data_partial.jsonl
+
+# 临时文件
+/tmp/
+*.tmp
+*.temp
+*_temp/
+
+# IDE
+.idea/
+.vscode/
+*.swp
+*.swo
+*~
+.project
+.pydevproject
+.settings/
+
+# Jupyter Notebook
+.ipynb_checkpoints/
+
+# Ray
+/ray_results/
+
+# macOS
+.DS_Store
+.AppleDouble
+.LSOverride
+
+# Linux
+*.directory
+
+# Windows
+Thumbs.db
+ehthumbs.db
+Desktop.ini
+
