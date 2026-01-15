@@ -27,6 +27,7 @@ proxy/env.sh
 /test/
 /results/
 /huggingface/
+/octobench217/
 *.log
 dedup.log
 

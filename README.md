@@ -1,4 +1,4 @@
-# again
+# mini-vela
 
 一个用于评估 AI Coding Agent 指令遵循能力的基准测试框架。通过 LiteLLM Proxy 拦截 API 调用，收集完整的交互轨迹，并使用 LLM 进行自动化评分。
 
@@ -86,19 +86,20 @@ python evaluate.py \
 benchmark/
 ├── benchmark_runner.py      # Benchmark 运行器主程序
 ├── evaluate.py              # 轨迹评估脚本
-├── data_checklist.jsonl     # 测试用例定义（含 checklist）
+├── requirements.txt         # Python 依赖
 │
 ├── scaffolds/               # 脚手架模块（多工具支持）
 │   ├── __init__.py          # 脚手架注册与工厂函数
 │   ├── base.py              # 抽象基类定义
 │   ├── claudecode.py        # Claude Code 脚手架实现
-│   ├── kilo_dev.py          # Kilo-Dev 脚手架（预留）
-│   └── droid.py             # Droid 脚手架（预留）
+│   ├── kilo_dev.py          # Kilo-Dev 脚手架实现
+│   └── droid.py             # Droid 脚手架实现
 │
 ├── proxy/                   # LiteLLM Proxy 组件（轨迹收集）
 │   ├── start_proxy.py       # Proxy 启动脚本
 │   ├── trajectory_logger.py # 轨迹日志记录器（自定义 Callback）
 │   ├── litellm_config.yaml  # LiteLLM 模型配置
+│   ├── env.sh.example       # 环境变量配置模板
 │   └── Dockerfile           # Proxy 容器化配置
 │
 └── convert/                 # 轨迹处理工具（去重合并）
@@ -159,19 +160,6 @@ python convert/convert_cc_traj_to_msg.py \
     --output_path ./results/merged.jsonl \ # 合并后的轨迹文件
 ```
 
-**处理流程：**
-
-1. **读取分桶**：按 session_id 将原始记录分配到不同的桶中
-2. **时间排序**：对每个 session 内的记录按请求时间排序
-3. **去重合并**：移除重复的上下文前缀，保留最完整的轨迹
-4. **格式转换**：将 Anthropic 格式转换为统一的 messages 格式
-
-**功能特性：**
-
-- 使用 Ray 进行分布式并行处理
-- 按 session_id 分桶聚合
-- 自动去重与 Generation 标记
-- 支持大文件分块输出（超过 chunk_size 时自动分片）
 
 ### 评估轨迹
 
@@ -180,7 +168,7 @@ python convert/convert_cc_traj_to_msg.py \
 ```bash
 python evaluate.py \
     --trajectories ./results/merged.jsonl \  # 合并后的轨迹文件
-    --data data_checklist.jsonl \            # 包含 checklist 的用例文件
+    --dataset MiniMaxAI/OctoCodingBench \    # HuggingFace 数据
     --output ./results/scores.json \         # 评估结果输出
     --model gpt-4o \                         # 评估用模型
     --api-key $OPENAI_API_KEY                # API Key
@@ -198,7 +186,9 @@ python evaluate.py \
 
 ## 📊 数据格式
 
-### 测试用例格式 (data_checklist.jsonl)
+### 测试用例格式
+
+测试用例从 [HuggingFace MiniMaxAI/OctoCodingBench](https://huggingface.co/datasets/MiniMaxAI/OctoCodingBench) 加载，每条记录为 JSON 格式：
 
 ```json
 {
@@ -307,7 +297,6 @@ Proxy 收集的原始轨迹，每个 API 调用一条记录：
 
 **关键字段说明：**
 
-- `generation`: 标记该 assistant 输出是否为真实生成（用于区分历史上下文和新生成内容）
 - `reasoning_content`: 模型的思考过程（thinking block）
 - `tool_calls`: 工具调用列表
 
@@ -357,15 +346,15 @@ model_list:
   # Google Gemini
   - model_name: gemini-3-pro
     litellm_params:
-      model: gemini/gemini-2.5-pro-preview-05-06
+      model: gemini/gemini-3-pro-preview-05-06
       api_key: os.environ/GEMINI_API_KEY
 
-  # DeepSeek（需要指定 api_base）
-  - model_name: deepseek-chat
+  # MiniMax
+  - model_name: MiniMax-M2.1
     litellm_params:
-      model: openai/deepseek-chat
-      api_base: https://api.deepseek.com/v1
-      api_key: os.environ/DEEPSEEK_API_KEY
+      model: anthropic/MiniMax-M2.1
+      api_base: https://api.minimaxi.com/anthropic
+      api_key: os.environ/MINIMAX_API_KEY
 ```
 
 ### 环境变量
