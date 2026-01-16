@@ -75,7 +75,7 @@ if [ "$SKIP_EVAL" = false ]; then
     echo "[Step 3/3] 评估轨迹..."
     python evaluate.py \
         --trajectories "$MERGED_FILE" \
-        --dataset "$DATASET" \
+        --data "$DATASET" \
         --output "$SCORES_FILE"
 else
     echo ""

@@ -88,7 +88,7 @@ benchmark/
 
 ### 任务实例格式
 
-任务实例从 [HuggingFace MiniMaxAI/OctoCodingBench](https://huggingface.co/datasets/MiniMaxAI/OctoCodingBench) 加载，每条记录为 JSON 格式：
+任务实例从 [MiniMaxAI/OctoBench](https://huggingface.co/datasets/MiniMaxAI/OctoBench) 加载，每条记录为 JSON 格式：
 
 ```json
 {

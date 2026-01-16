@@ -90,7 +90,7 @@ benchmark/
 
 ### Task Instance Format
 
-Task instances are loaded from [HuggingFace MiniMaxAI/OctoCodingBench](https://huggingface.co/datasets/MiniMaxAI/OctoCodingBench), each record in JSON format:
+Task instances are loaded from [MiniMaxAI/OctoBench](https://huggingface.co/datasets/MiniMaxAI/OctoBench), each record in JSON format:
 
 ```json
 {
