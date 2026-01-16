@@ -1,5 +1,18 @@
 # mini-vela
 
+[![arXiv](https://img.shields.io/badge/arXiv-2601.10343-b31b1b.svg)](https://arxiv.org/abs/2601.10343)
+[![Dataset](https://img.shields.io/badge/🤗%20Hugging%20Face-Dataset-yellow)](https://huggingface.co/datasets/MiniMaxAI/OctoBench)
+[![License](https://img.shields.io/badge/License-MIT-green.svg)](LICENSE)
+
+[English](README.md) | [中文](README_CN.md)
+
+## 📰 最新动态
+
+- **[2026-01-16]** 📄 论文发布于 arXiv: [OctoBench: Benchmarking Scaffold-Aware Instruction Following in Repository-Grounded Agentic Coding](https://arxiv.org/abs/2601.10343)
+- **[2026-01]** 🎉 数据集和框架发布
+
+---
+
 一个用于评估 AI Coding Agent 指令遵循能力的基准测试框架。通过 LiteLLM Proxy 拦截 API 调用，收集完整的交互轨迹，并使用 LLM 进行自动化评分。
 
 ## 🌟 特性

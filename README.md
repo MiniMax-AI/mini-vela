@@ -1,6 +1,17 @@
 # mini-vela
 
+[![arXiv](https://img.shields.io/badge/arXiv-2601.10343-b31b1b.svg)](https://arxiv.org/abs/2601.10343)
+[![Dataset](https://img.shields.io/badge/🤗%20Hugging%20Face-Dataset-yellow)](https://huggingface.co/datasets/MiniMaxAI/OctoBench)
+[![License](https://img.shields.io/badge/License-MIT-green.svg)](LICENSE)
+
 [English](README.md) | [中文](README_CN.md)
+
+## 📰 News
+
+- **[2026-01-16]** 📄 Paper released on arXiv: [OctoBench: Benchmarking Scaffold-Aware Instruction Following in Repository-Grounded Agentic Coding](https://arxiv.org/abs/2601.10343)
+- **[2026-01]** 🎉 Dataset & Framework released
+
+---
 
 A benchmark framework for evaluating instruction-following capabilities of AI Coding Agents. It intercepts API calls via LiteLLM Proxy, collects complete interaction trajectories, and performs automated scoring using LLM.
 
