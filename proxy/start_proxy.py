@@ -29,7 +29,9 @@ print(f"[start_proxy] ✓ 轨迹目录: {trajectory_logger_instance.output_dir}"
 print("=" * 60)
 
 if __name__ == "__main__":
-    config_path = os.path.join(script_dir, "litellm_config.yaml")
+    local_config = os.path.join(script_dir, "litellm_config.local.yaml")
+    default_config = os.path.join(script_dir, "litellm_config.yaml")
+    config_path = local_config if os.path.exists(local_config) else default_config
     port = int(os.environ.get("LITELLM_PORT", "4000"))
     
     print(f"[start_proxy] ✓ 配置文件: {config_path}")

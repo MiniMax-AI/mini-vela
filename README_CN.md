@@ -280,6 +280,15 @@ model_list:
 | `OPENAI_API_KEY` | OpenAI API Key（评估用） | - |
 | `OPENAI_BASE_URL` | OpenAI API Base URL | - |
 
+#### 脚手架专用环境变量
+
+> **重要**：以下变量必须正确配置，否则对应脚手架的任务会执行失败。
+
+| 变量名 | 脚手架 | 说明 | 必需 |
+|--------|--------|------|------|
+| `IS_SANDBOX` | **Claude Code** | 设置为 `1` 以允许 Claude Code 在 root 用户下运行 `--dangerously-skip-permissions`。未设置时，Claude Code 会拒绝在 root Docker 容器中执行。 | **是** |
+| `FACTORY_API_KEY` | **Droid** | Droid 的 Factory 认证密钥，从 [Factory](https://app.factory.ai/) 获取。未设置或无效时，所有 Droid 任务会报 "Authentication failed" 错误。 | **是** |
+
 ## 🔧 高级用法
 
 ### Docker 部署 Proxy

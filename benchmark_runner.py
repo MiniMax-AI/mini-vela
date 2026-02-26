@@ -114,9 +114,8 @@ def run_task(case, timeout=3600, model=None):
         "--add-host=host.docker.internal:host-gateway",
     ]
     
-    # 以非 root 用户运行，避免 Claude Code 的安全限制
-    # (--dangerously-skip-permissions 不能在 root 权限下使用)
-    cmd.extend(["--user", "1000:1000"])
+    # 全部以 root 用户运行
+    # cmd.extend(["--user", "1000:1000"])
     
     # 添加脚手架指定的环境变量
     env_vars = scaffold.get_docker_env(PROXY_URL, model=model)

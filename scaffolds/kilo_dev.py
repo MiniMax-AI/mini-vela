@@ -81,7 +81,7 @@ class KiloDevScaffold(BaseScaffold):
         setup_script = f'''
 mkdir -p $HOME/.npm-global && \
 npm config set prefix $HOME/.npm-global && \
-npm install -g @kilocode/cli && \
+npm install -g @kilocode/cli@0.10.2 && \
 export PATH="$HOME/.npm-global/bin:$PATH" && \
 mkdir -p $HOME/.kilocode/cli && \
 echo '{config_json}' > $HOME/.kilocode/cli/config.json
@@ -98,10 +98,10 @@ echo '{config_json}' > $HOME/.kilocode/cli/config.json
         """
         构建 Kilo Code CLI 命令序列
         
-        参数说明：
+        参数说明（v0.10.2）：
         - --auto: 自动模式，非交互式运行
-        - --yolo: 自动批准所有工具权限（等同于 autoApproval.enabled=true）
-        - --append-system-prompt: 追加自定义系统提示词
+        - --json: JSON 输出模式，禁用 TUI
+        - 自动批准通过配置文件 autoApproval 实现
                 
         Args:
             queries: 用户查询列表
@@ -117,16 +117,11 @@ echo '{config_json}' > $HOME/.kilocode/cli/config.json
             # 转义查询中的特殊字符
             escaped_query = self._escape_for_shell(query)
             
-            # 构建基础命令
+            # 构建基础命令（v0.10.2 参数格式）
             # --auto: 自动模式（非交互式）
-            # --yolo: 自动批准所有权限
             # --json: JSON 输出模式，完全禁用 TUI（适合 Docker 环境）
-            cmd = f'kilocode --auto --yolo --json "{escaped_query}"'
-            
-            # 只在第一个查询时添加 system prompt
-            if i == 0 and system_prompt:
-                escaped_sp = self._escape_for_shell(system_prompt)
-                cmd += f' --append-system-prompt "{escaped_sp}"'
+            # 自动批准通过配置文件 autoApproval 实现，无需 CLI 参数
+            cmd = f'kilocode --auto --json "{escaped_query}"'
             
             commands.append(cmd)
         

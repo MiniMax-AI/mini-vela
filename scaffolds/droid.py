@@ -24,7 +24,7 @@ class DroidScaffold(BaseScaffold):
         """
         return {
             "FACTORY_API_KEY": os.environ.get("FACTORY_API_KEY", ""),
-            "HOME": "/tmp",  # 设置 HOME 目录，确保非 root 用户有写权限
+            "HOME": "/tmp", 
         }
     
     def get_setup_script(self, proxy_url: str, model: Optional[str] = None) -> str:

@@ -18,6 +18,10 @@ env/
 
 # 敏感配置文件（包含 API Keys）
 proxy/env.sh
+proxy/litellm_config.local.yaml
+
+# 镜像修复脚本（含本地操作，不跟踪）
+/scripts/
 
 # 运行产物
 # results/

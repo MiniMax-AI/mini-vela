@@ -280,6 +280,15 @@ model_list:
 | `OPENAI_API_KEY` | OpenAI API Key (for evaluation) | - |
 | `OPENAI_BASE_URL` | OpenAI API Base URL | - |
 
+#### Scaffold-Specific Environment Variables
+
+> **Important**: The following variables must be configured correctly for the corresponding scaffolds to work. Missing or incorrect values will cause task execution failures.
+
+| Variable | Scaffold | Description | Required |
+|----------|----------|-------------|----------|
+| `IS_SANDBOX` | **Claude Code** | Set to `1` to allow Claude Code to run as root with `--dangerously-skip-permissions`. Without this, Claude Code will refuse to execute in root Docker containers. | **Yes** |
+| `FACTORY_API_KEY` | **Droid** | Factory API Key for Droid authentication. Obtain from [Factory](https://app.factory.ai/). Without a valid key, all Droid tasks will fail with "Authentication failed". | **Yes** |
+
 ## 🔧 Advanced Usage
 
 ### Docker Deployment for Proxy
