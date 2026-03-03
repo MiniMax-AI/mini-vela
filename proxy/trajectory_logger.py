@@ -47,8 +47,18 @@ class TrajectoryLogger(CustomLogger):
         
         os.makedirs(self.output_dir, exist_ok=True)
         self.excluded_models = ["haiku"]  # 排除 haiku 模型的轨迹记录
+        self._pre_call_system = None
         print(f"[TrajectoryLogger] 初始化完成，日志目录: {self.output_dir}")
         print(f"[TrajectoryLogger] instance_id 文件: {INSTANCE_ID_FILE}")
+
+    def log_pre_api_call(self, model, messages, kwargs):
+        """在 LiteLLM 翻译请求格式之前捕获 system prompt"""
+        try:
+            optional_params = kwargs.get("optional_params", {})
+            system = optional_params.get("system") or kwargs.get("system")
+            self._pre_call_system = system if system else None
+        except Exception:
+            self._pre_call_system = None
 
     def _get_current_instance_id(self):
         """从共享文件读取当前 instance_id"""
@@ -203,6 +213,115 @@ class TrajectoryLogger(CustomLogger):
         
         return content
 
+    def _convert_messages_to_claude_format(self, messages):
+        """
+        将 OpenAI 格式的 messages 统一转换为 Claude API 格式。
+        如果已经是 Claude 格式则保持不变。
+        
+        OpenAI 格式特征: content 为字符串, tool_calls 在消息顶层, role="tool" 独立消息
+        Claude 格式特征: content 为列表, tool_use 在 content 内, tool_result 在 user 消息内
+        
+        Returns:
+            (normalized_messages, extracted_system_text)
+        """
+        if not messages:
+            return [], None
+
+        normalized = []
+        extracted_system = None
+
+        i = 0
+        while i < len(messages):
+            msg = messages[i]
+            if not isinstance(msg, dict):
+                i += 1
+                continue
+
+            role = msg.get("role", "")
+            content = msg.get("content")
+
+            if role == "system":
+                if isinstance(content, str):
+                    extracted_system = content
+                elif isinstance(content, list):
+                    texts = [
+                        item.get("text", "")
+                        for item in content
+                        if isinstance(item, dict) and item.get("type") == "text"
+                    ]
+                    extracted_system = "\n".join(texts)
+                i += 1
+                continue
+
+            if role == "user":
+                if isinstance(content, str):
+                    new_content = [{"type": "text", "text": content}]
+                elif isinstance(content, list):
+                    new_content = content
+                else:
+                    new_content = [{"type": "text", "text": str(content) if content else ""}]
+                normalized.append({"role": "user", "content": new_content})
+                i += 1
+
+            elif role == "assistant":
+                new_content = []
+                if isinstance(content, str):
+                    if content:
+                        new_content.append({"type": "text", "text": content})
+                elif isinstance(content, list):
+                    new_content.extend(content)
+
+                for tc in msg.get("tool_calls", []):
+                    if isinstance(tc, dict):
+                        func = tc.get("function", {})
+                        tool_id = tc.get("id", "")
+                        tool_name = func.get("name", "")
+                        tool_args = func.get("arguments", "{}")
+                    else:
+                        tool_id = getattr(tc, "id", "")
+                        func = getattr(tc, "function", None)
+                        tool_name = getattr(func, "name", "") if func else ""
+                        tool_args = getattr(func, "arguments", "{}") if func else "{}"
+
+                    if isinstance(tool_args, str):
+                        try:
+                            tool_input = json.loads(tool_args)
+                        except json.JSONDecodeError:
+                            tool_input = {"raw": tool_args}
+                    else:
+                        tool_input = tool_args
+
+                    new_content.append({
+                        "type": "tool_use",
+                        "id": tool_id,
+                        "name": tool_name,
+                        "input": tool_input
+                    })
+
+                normalized.append({"role": "assistant", "content": new_content})
+                i += 1
+
+            elif role == "tool":
+                tool_results = []
+                while i < len(messages) and messages[i].get("role") == "tool":
+                    tool_msg = messages[i]
+                    tc = tool_msg.get("content", "")
+                    if not isinstance(tc, str):
+                        tc = json.dumps(tc, ensure_ascii=False)
+                    tool_results.append({
+                        "type": "tool_result",
+                        "tool_use_id": tool_msg.get("tool_call_id", ""),
+                        "content": tc
+                    })
+                    i += 1
+                normalized.append({"role": "user", "content": tool_results})
+
+            else:
+                normalized.append(msg)
+                i += 1
+
+        return normalized, extracted_system
+
     def _build_record(self, kwargs, response_obj, start_time, end_time):
         """
         构建日志记录（Claude API 原生格式，与 convert 工具兼容）
@@ -215,11 +334,26 @@ class TrajectoryLogger(CustomLogger):
         
         optional_params = kwargs.get("optional_params", {})
         system = optional_params.get("system") or kwargs.get("system")
+
+        if not system:
+            additional_args = kwargs.get("additional_args", {})
+            complete_input = additional_args.get("complete_input_dict", {})
+            if isinstance(complete_input, dict):
+                system = complete_input.get("system")
+
+        if not system and self._pre_call_system:
+            system = self._pre_call_system
+
         max_tokens = optional_params.get("max_tokens") or kwargs.get("max_tokens", 8192)
         
+        # 统一转换为 Claude API 格式（兼容 OpenAI 格式输入）
+        normalized_messages, extracted_system = self._convert_messages_to_claude_format(messages)
+        if extracted_system and not system:
+            system = extracted_system
+
         # 构建 request_body
         request_body = {
-            "messages": messages,
+            "messages": normalized_messages,
             "system": self._normalize_system(system),
             "tools": self._convert_tools_to_claude_format(tools),
             "model": kwargs.get("model", ""),

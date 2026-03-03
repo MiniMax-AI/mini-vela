@@ -34,15 +34,13 @@ class DroidScaffold(BaseScaffold):
         """
         # 构建所有模型的配置
         custom_models = []
-        for i, model_name in enumerate(SUPPORTED_MODELS):
+        for model_name in SUPPORTED_MODELS:
             model_config = {
                 "model": model_name,
-                "id": model_name,  # 直接使用模型名称作为 id
-                "index": i,
                 "baseUrl": proxy_url,
                 "apiKey": "fake-key",
                 "displayName": model_name,
-                "noImageSupport": False,
+                "supportsImages": True,
                 "provider": "anthropic",
             }
             custom_models.append(model_config)
