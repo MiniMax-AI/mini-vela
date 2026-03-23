@@ -38,6 +38,7 @@ class ClaudeCodeScaffold(BaseScaffold):
         return {
             "ANTHROPIC_BASE_URL": proxy_url,
             "ANTHROPIC_API_KEY": "fake-key",
+            "IS_SANDBOX": "1",
         }
     
     def get_setup_script(self, proxy_url: str, model: Optional[str] = None) -> str:

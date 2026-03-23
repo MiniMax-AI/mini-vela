@@ -96,13 +96,14 @@ EVAL_PROMPT = """
 """
 
 
-def load_trajectory(filepath):
+def load_trajectory(filepath, session_id=None):
     """加载 convert 后的轨迹，返回主轨迹
     
     主轨迹判断规则：
-    1. 优先选择有 tools 的记录（非空数组）
-    2. 如果有多个有 tools 的，选 messages 最多的
-    3. 如果都没有 tools，选最后一条
+    1. 若指定 session_id，先筛出该 session 的记录
+    2. 优先选择有 tools 的记录（非空数组）
+    3. 如果有多个有 tools 的，选 messages 最多的
+    4. 如果都没有 tools，选最后一条
     """
     records = []
     with open(filepath, "r", encoding="utf-8") as f:
@@ -112,6 +113,11 @@ def load_trajectory(filepath):
     
     if not records:
         return None
+    
+    if session_id:
+        filtered = [r for r in records if r.get("meta", {}).get("session_id") == session_id]
+        if filtered:
+            records = filtered
     
     # 过滤出有 tools 的记录（主轨迹）
     with_tools = [r for r in records if r.get("tools")]
@@ -300,10 +306,10 @@ def get_detailed_results(eval_result):
     return results
 
 
-def evaluate_single(trajectory_path, case_data, llm_config):
+def evaluate_single(trajectory_path, case_data, llm_config, session_id=None):
     """评估单个轨迹"""
     # 加载主轨迹
-    record = load_trajectory(trajectory_path)
+    record = load_trajectory(trajectory_path, session_id=session_id)
     if not record:
         return {
             "success": False,
@@ -410,7 +416,7 @@ def main():
         print(f"[EVAL] 评估: {instance_id}")
         
         traj_file = session_to_file[instance_id]
-        eval_result = evaluate_single(traj_file, case_data, llm_config)
+        eval_result = evaluate_single(traj_file, case_data, llm_config, session_id=instance_id)
         
         results.append({
             "instance_id": instance_id,
