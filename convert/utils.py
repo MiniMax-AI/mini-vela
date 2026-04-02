@@ -1,9 +1,22 @@
+import re
 import json
 import hashlib
 from dataclasses import dataclass
 from copy import deepcopy
 from collections import defaultdict
-from typing import List
+from typing import List, Optional, Tuple
+
+
+_XML_CHILD_TAG_RE = re.compile(
+    r"<(\w+)>(.*?)</\1>",
+    re.DOTALL,
+)
+
+
+def _build_xml_tool_re(tool_names: List[str]) -> re.Pattern:
+    """Build a compiled regex that matches ``<tool_name>...</tool_name>``."""
+    pattern = "|".join(re.escape(n) for n in tool_names)
+    return re.compile(rf"<({pattern})>\s*(.*?)\s*</\1>", re.DOTALL)
 
 
 @dataclass
@@ -90,6 +103,76 @@ class Completion:
         return normalized_str
 
 
+def _parse_xml_args(inner_xml: str) -> dict:
+    """Parse child XML tags into a dict of arguments.
+
+    For simple children like ``<path>file.txt</path>`` the value is the text.
+    For children that themselves contain nested tags the raw XML is kept as the
+    value so no information is lost.  An ``<args>`` wrapper is transparently
+    unwrapped.  When the same tag name appears multiple times the values are
+    collected into a list.
+    """
+    text = inner_xml.strip()
+
+    args_match = re.match(r"^\s*<args>\s*(.*?)\s*</args>\s*$", text, re.DOTALL)
+    if args_match:
+        text = args_match.group(1).strip()
+
+    result: dict = {}
+    for child_match in _XML_CHILD_TAG_RE.finditer(text):
+        tag_name = child_match.group(1)
+        tag_body = child_match.group(2).strip()
+
+        if tag_name in result:
+            existing = result[tag_name]
+            if isinstance(existing, list):
+                existing.append(tag_body)
+            else:
+                result[tag_name] = [existing, tag_body]
+        else:
+            result[tag_name] = tag_body
+
+    if not result:
+        result["raw"] = text
+
+    return result
+
+
+def extract_xml_tool_calls(
+    text: str,
+    tool_names: Optional[List[str]] = None,
+) -> Tuple[str, list]:
+    """Extract XML-style tool calls from assistant text content.
+
+    *tool_names* must be provided for XML extraction to happen.  The regex
+    is built dynamically from the list so it stays in sync with whatever
+    tools the request actually defined.  When *None* or empty, no
+    extraction is attempted and the original text is returned as-is.
+
+    Returns ``(cleaned_text, tool_calls)`` where *cleaned_text* has the XML
+    tool-call fragments removed (leading/trailing whitespace collapsed) and
+    *tool_calls* is a list of ``{"name": ..., "arguments": ...}`` dicts.
+    """
+    if not text or not tool_names:
+        return text, []
+
+    xml_tool_re = _build_xml_tool_re(tool_names)
+
+    tool_calls = []
+    cleaned = text
+
+    for m in xml_tool_re.finditer(text):
+        tool_name = m.group(1)
+        inner_xml = m.group(2)
+        arguments = _parse_xml_args(inner_xml)
+        tool_calls.append({"name": tool_name, "arguments": arguments})
+
+    if tool_calls:
+        cleaned = xml_tool_re.sub("", text).strip()
+
+    return cleaned, tool_calls
+
+
 def convert_tools(tools_data):
     """将原始工具格式转换为目标格式"""
     if not tools_data:
@@ -123,7 +206,7 @@ def convert_tools(tools_data):
     return converted_tools
 
 
-def convert_messages(messages_data, system_prompt=None):
+def convert_messages(messages_data, system_prompt=None, tool_names=None):
     """将原始消息格式转换为目标格式"""
     converted_messages = []
     
@@ -134,6 +217,8 @@ def convert_messages(messages_data, system_prompt=None):
     for msg in messages_data:
         if msg.get("role") == "assistant":
             content = msg.get("content", [])
+            if isinstance(content, str):
+                continue
             current_assistant_tools = []
             for item in content:
                 if item.get("type") == "tool_use":
@@ -210,9 +295,19 @@ def convert_messages(messages_data, system_prompt=None):
             thinking_content = ""
             thinking_block_count = 0
             
+            if isinstance(content, str):
+                cleaned_text, xml_tools = extract_xml_tool_calls(content, tool_names)
+                text_content = cleaned_text
+                tool_calls = xml_tools
+                content = []
+            
             for item in content:
                 if item.get("type") == "text":
-                    text_content = item.get("text", "")
+                    raw_text = item.get("text", "")
+                    cleaned_text, xml_tools = extract_xml_tool_calls(raw_text, tool_names)
+                    text_content = cleaned_text
+                    if xml_tools:
+                        tool_calls.extend(xml_tools)
                 elif item.get("type") == "tool_use":
                     tool_name = item.get("name", "")
                     tool_input = item.get("input", {})
@@ -243,7 +338,7 @@ def convert_messages(messages_data, system_prompt=None):
     return converted_messages
 
 
-def convert_response(response_data):
+def convert_response(response_data, tool_names=None):
     """转换响应数据"""
     if not response_data:
         return {}
@@ -262,7 +357,11 @@ def convert_response(response_data):
                 is_generation = True
                 
             if item.get("type") == "text":
-                content = item.get("text", "")
+                raw_text = item.get("text", "")
+                cleaned_text, xml_tools = extract_xml_tool_calls(raw_text, tool_names)
+                content = cleaned_text
+                if xml_tools:
+                    tool_calls.extend(xml_tools)
             elif item.get("type") == "thinking":
                 reasoning_content = item.get("thinking", "")
             elif item.get("type") == "tool_use":
@@ -301,13 +400,16 @@ def convert_completion_to_msg(completion: Completion, min_assistant_turns: int) 
     # 转换工具
     tools = convert_tools(completion.tools)
     
+    # 从原始工具定义中提取工具名，用于 XML tool call 解析
+    xml_tool_names = [t.get("name", "") for t in completion.tools if t.get("name")] or None
+    
     # 转换消息
-    messages = convert_messages(completion.messages, completion.system)
+    messages = convert_messages(completion.messages, completion.system, tool_names=xml_tool_names)
     if messages is None:
         return None
     
     # 转换响应并添加到消息中
-    response_message = convert_response({"content": completion.completion})
+    response_message = convert_response({"content": completion.completion}, tool_names=xml_tool_names)
     if response_message:
         messages.append(response_message)
     
